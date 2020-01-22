@@ -95,6 +95,8 @@ private:
     std::unordered_map<unsigned int, double> timestamps_;
     //! Flag whether each frame is lost or not
     std::unordered_map<unsigned int, bool> is_lost_frms_;
+
+    std::unordered_set<unsigned int> keyfrms_replaced_;
 };
 
 } // namespace data

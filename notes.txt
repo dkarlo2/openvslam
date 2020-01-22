@@ -1,0 +1,13 @@
+hypothesis: local_map_cleaner::remove_redundant_keyframes and tracking_module::track mustn't run in parallel
+why: local_map_cleaner::remove_redundant_keyframes calls keyframe::prepare_for_erasing if it decides that it is redundant, which will remove keyframe A
+right before raising the flag will_be_erased_ on line 378 in keyframe.cc, tracking thread is holding keyframe A as a reference keyframe for frame 1, and preparing to call
+map_database::update_frame_statistics
+Thread 2 continues with preparing to erase keyframe A, and calls map_database::replace_reference_keyframe, which calls frame_statistics::replace_reference_keyframe,
+which reassigns reference keyframes, after which the mapping module continues it execution
+after that, thread 1 proceeds by calling map_database::update_frame_statistics, which in turn calls frame_statistics::update_frame_statistics, which stores keyframe A as a relative keyframe for frame 1
+keyframe A was in the meantime erased, and should no longer be a reference keyframe for any frame
+
+lines 88-91 in local_map_cleaner.cc prevent this from happening more often, because they filter out recent keyframes. however, it happens when some older keyframe is set to be removed, which is at the same time being set as a reference keyframe for a current frame (because current frame is somewhere near that older keyframe)
+
+Thread 1 (tracking thread): tracking_module::track -> map_database::update_frame_statistics -> frame_statistics::update_frame_statistics -> frame 1 is registered to keyframe A
+Thread 2 (mapping thread) : mapping_module::run -> mapping_module::mapping_with_new_keyframe -> local_map_cleaner::remove_redundant_keyframes -> keyframe::prepare_for_erasing (keyframe A is preparing to be erased) -> right before entering line 378 and raising keyframe A will_be_erased_ flag

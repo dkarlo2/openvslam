@@ -2,11 +2,19 @@
 #include "openvslam/data/keyframe.h"
 #include "openvslam/data/frame_statistics.h"
 
+#include <spdlog/spdlog.h>
+
 namespace openvslam {
 namespace data {
 
 void frame_statistics::update_frame_statistics(const data::frame& frm, const bool is_lost) {
     if (frm.cam_pose_cw_is_valid_) {
+        spdlog::debug("Frame statistics: update frame {} with reference keyframe {}", frm.id_, frm.ref_keyfrm_->id_);
+
+        if (keyfrms_replaced_.find(frm.ref_keyfrm_->id_) != keyfrms_replaced_.end()) {
+            spdlog::error("Frame statistics: keyframe {} has already been replaced", frm.ref_keyfrm_->id_);
+        }
+
         const Mat44_t rel_cam_pose_from_ref_keyfrm = frm.cam_pose_cw_ * frm.ref_keyfrm_->get_cam_pose_inv();
 
         frm_ids_of_ref_keyfrms_[frm.ref_keyfrm_].push_back(frm.id_);
@@ -25,6 +33,10 @@ void frame_statistics::update_frame_statistics(const data::frame& frm, const boo
 }
 
 void frame_statistics::replace_reference_keyframe(data::keyframe* old_keyfrm, data::keyframe* new_keyfrm) {
+    spdlog::debug("Frame statistics: replace keyframe {} with keyframe {}", old_keyfrm->id_, new_keyfrm->id_);
+
+    keyfrms_replaced_.insert(old_keyfrm->id_);
+
     // Delete keyframes and update associations.
 
     assert(num_valid_frms_ == rel_cam_poses_from_ref_keyfrms_.size());

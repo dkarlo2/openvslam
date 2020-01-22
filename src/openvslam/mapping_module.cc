@@ -162,7 +162,11 @@ void mapping_module::mapping_with_new_keyframe() {
     if (2 < map_db_->get_num_keyframes()) {
         local_bundle_adjuster_->optimize(cur_keyfrm_, &abort_local_BA_);
     }
-    local_map_cleaner_->remove_redundant_keyframes(cur_keyfrm_);
+
+    // {
+        // std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
+        local_map_cleaner_->remove_redundant_keyframes(cur_keyfrm_);
+    // }
 }
 
 void mapping_module::store_new_keyframe() {
